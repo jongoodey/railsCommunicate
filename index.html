@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>this is a static page</title>
+	<script src='js/jquery.js'></script>
+	<script src='js/jquery-ui-1.10.4.js'></script>	
+	<script src='https://cdn.firebase.com/js/client/1.0.15/firebase.js'></script>
+
+	<style type="text/css">
+		.formStyle {
+			display: inline-block;
+		}
+	</style>
+</head>
+<body>
+
+	<div>
+		<h1>welcome to the game</h1>
+		<p id='game'></p>
+		<p id='score'></p>
+		<a href="/high_scores">add new score</a>
+	</div>
+	<div>
+		<ul class="scores">
+		</ul>
+	</div>
+
+	<div class="hider">
+	
+		<div class="formStyle">
+			<p>click here to add</p>
+			<form id="post">
+				<input type="text" name="high_score[game]" class="postName"><br>
+				<input type="text" name="high_score[score]" class="postScore">
+		  	<input type="submit" value="Submit">
+			</form>
+		</div>
+		
+		<div class="formStyle">
+			<p>click item to edit</p>
+			<form id="edit">
+				<input type="text" name="" class="eleID"><br>
+				<input type="text" name="high_score[game]" class="eleGame"><br>
+				<input type="text" name="high_score[score]" class="eleScore">
+		  	<input type="submit" value="Submit">
+			</form>
+		</div>
+
+		<div class="formStyle">
+			<p>click item to delete</p>
+			<form id="delete">
+				<input type="text" name="" class="eleID"><br>
+		  	<input type="submit" value="Delete">
+			</form>
+		</div>
+
+		<button id="timer">timer start</button>
+		<button id="stop">timer stop</button>
+		<button id="reset">timer reset</button>
+		<p id="showCounter"></p>
+		<p id="date"></p>
+
+		<p id="getjson">click here</p>
+
+		<div id='messagesDiv'></div>
+		<input type='text' id='nameInput' placeholder='Name'>
+		<input type='text' id='messageInput' placeholder='Message'>
+
+	</div>
+
+	<script>
+
+	// code for firebase
+
+	  var myDataRef = new Firebase('https://nfx548oraxx.firebaseio-demo.com/');
+	  $('#messageInput').keypress(function (e) {
+	    if (e.keyCode == 13) {
+	      var name = $('#nameInput').val();
+	      var text = $('#messageInput').val();
+	      myDataRef.push({name: name, text: text});
+	      $('#messageInput').val('');
+	    }
+	  });
+	  myDataRef.on('child_added', function(snapshot) {
+	    var message = snapshot.val();
+	    displayChatMessage(message.name, message.text);
+	  });
+	  function displayChatMessage(name, text) {
+	    $('<div/>').text(text).prepend($('<em/>').text(name+': ')).appendTo($('#messagesDiv'));
+	    $('#messagesDiv')[0].scrollTop = $('#messagesDiv')[0].scrollHeight;
+	  };
+	  
+	  // my code
+
+	  var formeleID = 0;
+
+	  $('#getjson').on('click', function(){
+	  	$('.scores').children().remove();
+	  	getJson();
+	  });
+
+	  function getJson() {
+
+
+			// $.ajax({
+			//   type: "GET",
+			//   dataType: 'json',
+			//   crossDomain : true,
+			//   url: "http://firebase-rails.herokuapp.com/high_scores.json"
+			// });
+
+
+			$.getJSON( "http://firebase-rails.herokuapp.com/high_scores.json", function( data ) {
+				$.each(data, function(i, item) {
+			    console.log(item.game);
+			    $('.scores').append('<li id="'+item.id+'" data-game="'+item.game+'" data-score="'+item.score+'" >'+item.game+ " " +item.score+ '</li>')
+			  });
+			  $('.scores li').on('click', function(){
+			    
+			    formeleID = $(this).attr('id');
+
+			  	$('form#delete .eleID').val($(this).attr('id'));
+
+			  	$('form#edit .eleID').val($(this).attr('id'));
+			  	$('form#edit .eleGame').val($(this).data('game'));
+			  	$('form#edit .eleScore').val($(this).data('score'));
+			  });
+			});
+
+	  }
+
+
+		$( "form#post" ).on( "submit", function( event ) {
+		  event.preventDefault();
+
+		  var myDataTest = new Firebase('https://nfx548oraxx.firebaseio-demo.com/');
+
+      var name = $('.postName').val();
+      var text = $('.postScore').val();
+      myDataTest.push({name: name, text: text});
+
+		  $.ajax({
+	       type: "POST",
+	       url: "http://firebase-rails.herokuapp.com/high_scores/",
+	       data: $( this ).serialize()
+      	});
+		});
+
+	  $( "form#edit" ).on( "submit", function( event ) {
+  	  event.preventDefault();
+  	  $.ajax({
+        type: "POST",
+        url: "http://firebase-rails.herokuapp.com/high_scores/"+formeleID+"",
+        data: { _method : "patch", "high_score[game]": $('.eleGame').val(), "high_score[score]": $('.eleScore').val() },
+        dataType: "JSON"
+     	});
+  	});
+
+    $( "form#delete" ).on( "submit", function( event ) {
+		  event.preventDefault();
+		  $.ajax({
+        type: "POST",
+        url: "http://firebase-rails.herokuapp.com/high_scores/"+formeleID+"",
+        data: {"_method":"delete"}
+      	});
+		});
+
+		var count = 11;
+		var myVar = setInterval(function(){myTime()},1000);
+		
+		$('#timer').on('click', function(){
+				myFunction();
+		});
+
+		$('#stop').on('click', function(){
+				clearInterval(start);
+		});
+
+		$('#reset').on('click', function(){
+				reset();
+		});
+
+		function reset() {
+			count = 11;
+		}
+
+		function myFunction() {
+		    start = setInterval(function(){
+		    	count--;
+		    	if (count <= 0) {
+		    		clearInterval(start);
+		    		alert('Sorry times up!');
+		    		$('form').slideUp('slow');
+		    		$('.hider').slideUp('slow');
+		    	};
+		    	$('#showCounter').html(count);
+		    	console.log(count);
+		    }, 1000);
+		}
+		
+		function myTime() {
+		    var d = new Date();
+		    document.getElementById("date").innerHTML = d.toLocaleTimeString();
+		}
+
+
+	</script>
+</body>
+</html>
